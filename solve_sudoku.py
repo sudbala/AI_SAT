@@ -7,20 +7,24 @@ if __name__ == "__main__":
     #  of values:
     random.seed(1)
 
+    display_sudoku_solution("test.sol")
+
     # puzzle_name = str(sys.argv[1][:-4])
     # sol_filename = puzzle_name + ".sol"
+    puzzle_name = "puzzle1"
+    sol_filename = puzzle_name + ".sol"
 
-    sat = SAT("all_cells.cnf")
+    # sat = SAT("one_cell.cnf")
+    # sat = SAT("rows.cnf")
+    sat = SAT("puzzle1.cnf")
 
     print(sat.clauses)
     print(" ")
     print(sat.variables)
 
-    assignment = sat.gsat()
+    assignment = sat.walksat()
     print(assignment)
 
-    # result = sat.walksat()
-    #
-    # if result:
-    #     sat.write_solution(sol_filename)
-    #     display_sudoku_solution(sol_filename)
+    if assignment:
+        sat.write_solution(sol_filename)
+        display_sudoku_solution(sol_filename)

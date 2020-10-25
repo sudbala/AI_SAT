@@ -11,11 +11,13 @@ class SAT:
     def __init__(self, filename):
         # TODO: Tries, flips, clauses, threshold, variable list
         self.max_tries = 2
-        self.max_flips = 729
-        self.threshold = 0.5
+        self.max_flips = 100000
+        self.threshold = 0.3
         self.variables = set()
         self.clauses = list()
+        self.assignment = dict()
         self.generate_clauses(filename)
+        self.printonce = True
         random.seed(1)
 
     # Generates the list of clauses and sets the variables list and all!
@@ -50,6 +52,7 @@ class SAT:
                 satisfied_clauses = []
                 unsatisfied_clauses = []
                 if self.satisfy(assignment, satisfied_clauses, unsatisfied_clauses):
+                    self.assignment = assignment
                     return assignment
                 # If we are not satisfied, then we need to either randomly flip a var, or score and flip. We start by
                 # randomly flipping
@@ -80,6 +83,11 @@ class SAT:
             else:
                 unsatisfied_clauses.append(clause)
         # Check the length of unsatisfied clause, if no length, we are done! Otherwise false
+        if (len(unsatisfied_clauses) < 20 and self.printonce):
+            self.assignment = assignment
+            self.write_solution("test.sol")
+            self.printonce = False
+        print("Len unsat: " + str(len(unsatisfied_clauses)))
         if len(unsatisfied_clauses) == 0:
             return True
         return False
@@ -110,36 +118,85 @@ class SAT:
     def is_negated(self, literal):
         return "-" in literal
 
+    # Remove negation if negated
+    def remove_negation(self, literal):
+        literal_var = literal
+        if self.is_negated(literal):
+            literal_var = literal[1:]
+        return literal_var
+
+
     # Flips a var in the assignment, either randomly or by scores
-    def flip_var(self, assignment, random_var=False):
+    def flip_var(self, assignment, random_var=False, clause_vars=None):
         # Check if we are flipping a random var
         if random_var:
             key = random.choice(list(assignment.keys()))
             assignment[key] = not assignment[key]
         # If not, we gotta do it based on score
+        elif clause_vars:
+            net_satisfied = dict.fromkeys(assignment.keys(), 0)
+            # Check if a clause was made satisfied or made unsatisfied
+            for variable in clause_vars:
+                variable = self.remove_negation(variable)
+                for clause in self.clauses:
+                    satisfied = self.is_true_clause(clause, assignment)
+                    result = self.is_true_clause(clause, self.flip_assignment(assignment, variable))
+                    if not satisfied and result:
+                        net_satisfied[variable] += 1
+                    elif satisfied and not result:
+                        net_satisfied[variable] -= 1
+
+            # Now we get the max keys
+            max_value = max(net_satisfied.values())
+            if max_value != 0:
+                # print(max_value)
+                max_keys = [k for k, v in net_satisfied.items() if v == max_value]
+                # print("max keys: " + str(max_keys))
+                # Make a random choice of key
+                var_to_flip = random.choice(max_keys)
+                assignment[var_to_flip] = not assignment[var_to_flip]
         else:
-            made_satisfied = dict.fromkeys(assignment.keys(), 0)
-            made_unsatisfied = dict.fromkeys(assignment.keys(), 0)
+            net_satisfied = dict.fromkeys(assignment.keys(), 0)
             # Check if a clause was made satisfied or made unsatisfied
             for variable in self.variables:
                 for clause in self.clauses:
                     satisfied = self.is_true_clause(clause, assignment)
                     result = self.is_true_clause(clause, self.flip_assignment(assignment, variable))
                     if not satisfied and result:
-                        made_satisfied[variable] += 1
+                        net_satisfied[variable] += 1
                     elif satisfied and not result:
-                        made_unsatisfied[variable] += 1
-            # Now we get the differences between what satisfied and unsatisfied
-            net_satisfied = dict.fromkeys(assignment.keys(), 0)
-            for key in made_satisfied.keys():
-                net_satisfied[key] = made_satisfied[key] - made_unsatisfied[key]
+                        net_satisfied[variable] -= 1
+
             # Now we get the max keys
             max_value = max(net_satisfied.values())
-            print(max_value)
+            # print(max_value)
             max_keys = [k for k, v in net_satisfied.items() if v == max_value]
+
             # Make a random choice of key
             var_to_flip = random.choice(max_keys)
             assignment[var_to_flip] = not assignment[var_to_flip]
+            # made_satisfied = dict.fromkeys(assignment.keys(), 0)
+            # made_unsatisfied = dict.fromkeys(assignment.keys(), 0)
+            # # Check if a clause was made satisfied or made unsatisfied
+            # for variable in self.variables:
+            #     for clause in self.clauses:
+            #         satisfied = self.is_true_clause(clause, assignment)
+            #         result = self.is_true_clause(clause, self.flip_assignment(assignment, variable))
+            #         if not satisfied and result:
+            #             made_satisfied[variable] += 1
+            #         elif satisfied and not result:
+            #             made_unsatisfied[variable] += 1
+            # # Now we get the differences between what satisfied and unsatisfied
+            # net_satisfied = dict.fromkeys(assignment.keys(), 0)
+            # for key in made_satisfied.keys():
+            #     net_satisfied[key] = made_satisfied[key] - made_unsatisfied[key]
+            # # Now we get the max keys
+            # max_value = max(net_satisfied.values())
+            # print(max_value)
+            # max_keys = [k for k, v in net_satisfied.items() if v == max_value]
+            # # Make a random choice of key
+            # var_to_flip = random.choice(max_keys)
+            # assignment[var_to_flip] = not assignment[var_to_flip]
 
     # Flips an assignment model and returns a copy of the assignment
     def flip_assignment(self, assignment, variable):
@@ -155,10 +212,12 @@ class SAT:
         assignment = self.generate_random_assignment()
         # Now we run algorithm for the maximum number of flips
         for flip in range(self.max_flips):
+            print("flip: " + str(flip))
             # If we are satisfied, then finish
             satisfied_clauses = []
             unsatisfied_clauses = []
             if self.satisfy(assignment, satisfied_clauses, unsatisfied_clauses):
+                self.assignment = assignment
                 return assignment
             # Otherwise, we want to randomly select a clause from the unsatisfied clauses
             clause = self.select_random_clause(unsatisfied_clauses)
@@ -166,8 +225,12 @@ class SAT:
             # First we check our random threshold
             prob = random.random()
             if prob < self.threshold:
+                # If randomly, choose var randomly from clause and flip it
                 self.random_flip(assignment, clause)
-
+            else:
+                # Otherwise, flip the var in the clause that maximizes the number of satisfied clauses
+                self.flip_var(assignment, clause_vars=clause)
+        return None
     # Returns a random choice from the unsatisfied clauses to walksat
     def select_random_clause(self, unsatisfied_clauses):
         return random.choice(unsatisfied_clauses)
@@ -180,6 +243,17 @@ class SAT:
             random_var = random_var[1:]
         # Now flip
         assignment[random_var] = not assignment[random_var]
-#
-# if __name__ == "__main__":
-#
+
+    # Writes the solution to a .sud file for the Sudoku display
+    def write_solution(self, sol_filename):
+        # We just need to print whether it is its symbol or negation of its symbol:
+        f = open(sol_filename, "w")
+        # Loop through assignment, write to file
+        for key in self.assignment.keys():
+            if self.assignment[key]:
+                # If we are true, them write that true symbol and go on
+                f.write(key + "\n")
+            elif not self.assignment[key]:
+                # Now we just add a negative sign to indicate it the opposite symbol
+                f.write("-" + key + "\n")
+        f.close()
