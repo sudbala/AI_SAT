@@ -7,24 +7,28 @@ if __name__ == "__main__":
     #  of values:
     random.seed(1)
 
-    display_sudoku_solution("test.sol")
-
-    # puzzle_name = str(sys.argv[1][:-4])
-    # sol_filename = puzzle_name + ".sol"
-    puzzle_name = "puzzle1"
+    puzzle_name = str(sys.argv[1][:-4])
     sol_filename = puzzle_name + ".sol"
 
-    # sat = SAT("one_cell.cnf")
-    # sat = SAT("rows.cnf")
-    sat = SAT("puzzle1.cnf")
+    # Grab the method of solving you want
+    method = str(sys.argv[2]).lower()
 
-    print(sat.clauses)
-    print(" ")
-    print(sat.variables)
+    # Instantiation of the SAT solver
+    sat = SAT(sys.argv[1], 100000, 0.8)
 
-    assignment = sat.walksat()
+    assignment = None
+    if method == 'gsat':
+        assignment = sat.gsat()
+    elif method == 'walksat':
+        assignment = sat.walksat()
+    else:
+        print("Incorrect Assignment:\n"
+              "Usage: /solve_sudoku.py <file.cnf> <gsat/walksat>")
+        exit(1)
     print(assignment)
 
     if assignment:
         sat.write_solution(sol_filename)
         display_sudoku_solution(sol_filename)
+        print()
+
