@@ -21,6 +21,7 @@ class SAT:
         self.satisfied_clauses = []
         self.unsatisfied_clauses = []
         self.generate_clauses(filename)
+        self.num_flips = 0
 
     # Generates the list of clauses and sets the variables list and all!
     def generate_clauses(self, filename):
@@ -43,17 +44,18 @@ class SAT:
     # the change which minimizes the number fo unsatisfied clauses in the new assignment, or with some probability
     # picks a variable at random.
     def gsat(self):
-        # The inputs into GSAT are a set of clauses, the max number of flips, and the max number of tries
+        # The inputs into GSAT are a set of clauses, the max number of flips
         # Random assignment of variables
         self.assignment = self.generate_random_assignment()
         # Now, for the maximum number of flips
         for flip in range(1, self.max_flips):
-            # print("flip: " + str(flip))
             # We need to see if the current assignment satisfies the clauses
             self.satisfied_clauses = []
             self.unsatisfied_clauses = []
             if self.satisfy():
+                self.num_flips = flip
                 return self.assignment
+            print("GSAT flip: " + str(flip) + " with " + str(len(self.unsatisfied_clauses)) + " unsatisfied clauses left")
             # If we are not satisfied, then we need to either randomly flip a var, or score and flip. We start by
             # randomly flipping
             prob = random.random()
@@ -72,12 +74,14 @@ class SAT:
         self.assignment = self.generate_random_assignment()
         # Now we run algorithm for the maximum number of flips
         for flip in range(self.max_flips):
-            print("flip: " + str(flip))
             # If we are satisfied, then finish
             self.satisfied_clauses = []
             self.unsatisfied_clauses = []
             if self.satisfy():
+                self.num_flips = flip
                 return self.assignment
+            print("Walksat flip: " + str(flip) + " with " + str(len(self.unsatisfied_clauses)) +
+                  " unsatisfied clauses left")
             # Otherwise, we want to randomly select a clause from the unsatisfied clauses
             clause = self.select_random_clause()
 
@@ -202,7 +206,7 @@ class SAT:
             # Now that we have our max keys, choose one randomly
 
             if max_satisfied_keys:
-                print(max_value)
+                # print(max_value)
                 key = random.choice(max_satisfied_keys)
                 self.assignment[key] = not self.assignment[key]
 

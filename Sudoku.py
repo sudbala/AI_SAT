@@ -1,3 +1,9 @@
+# CS 76: Artificial Intelligence - PA5:Logic
+# Fall 2020
+# Authors: Sudharsan Balasubramani & Alberto
+# Collaboration: Discussed ideas with James Fleming and Mack Reiferson
+
+# Class to handle all Sudoku related tasks. Written by Alberto
 class Sudoku:
     def __init__(self):
         self.numbers = [[0 for i in range(9)] for j in range(9)]
